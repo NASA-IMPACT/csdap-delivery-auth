@@ -1,0 +1,5 @@
+*.json
+.env
+*.egg-info
+env
+__pycache__
