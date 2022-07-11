@@ -1,10 +1,9 @@
 # Cognito Access Script
 
-## Use
+## Set up
 
-1. Check out this repository
-2. Install requirements: `pip install -r requirements.txt`
-3. Copy `.env.template` file to `.env` and fill in necessary values
+1. Install this tool: `pip install git+https://github.com/NASA-IMPACT/csdap-delivery-auth.git`
+2. Configure required environment variables by following `.env.template`
 
 ## Use with AWS CLI
 
