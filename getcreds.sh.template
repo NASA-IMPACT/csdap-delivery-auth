@@ -1,0 +1,3 @@
+#!/bin/zsh
+export TOTP_TOKEN=<TOTP Secret>
+csdap-auth get-credentials -u $1 -p $2 --mfa-code=$(totp-cli instant)
