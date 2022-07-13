@@ -89,31 +89,79 @@ def setup_account(
         required_attribute_keys = json.loads(
             response["ChallengeParameters"].get("requiredAttributes", "[]")
         )
-        new_password = input("Enter new password: ")
-        required_attribute_values = {}
-        for attribute in required_attribute_keys:
-            required_attribute_values[attribute] = input(
-                f"Enter a value for {attribute}: "
-            )
-        password_response = idp_client.respond_to_auth_challenge(
-            ChallengeName=response["ChallengeName"],
-            ChallengeResponses={
-                "USERNAME": username,
-                "NEW_PASSWORD": new_password,
-                **required_attribute_values,
-            },
-            ClientId=cognito_client_id,
-            Session=session,
-        )
+        password_set = False
+        while not password_set:
+            new_password = input("Enter new password: ")
+            required_attribute_values = {}
+            for attribute in required_attribute_keys:
+                required_attribute_values[attribute] = input(
+                    f"Enter a value for {attribute}: "
+                )
+            try:
+                password_response = idp_client.respond_to_auth_challenge(
+                    ChallengeName=response["ChallengeName"],
+                    ChallengeResponses={
+                        "USERNAME": username,
+                        "NEW_PASSWORD": new_password,
+                        **required_attribute_values,
+                    },
+                    ClientId=cognito_client_id,
+                    Session=session,
+                )
+            except idp_client.meta.client.exceptions.InvalidPasswordException as err:
+                click.echo(err)
+            else:
+                password_set = True
+                click.echo("New password set")
+                if password_response.get("ChallengeName") == "MFA_SETUP":
+                    mfa_setup_workflow(
+                        idp_client,
+                        access_token=password_response["AuthenticationResult"][
+                            "AccessToken"
+                        ],
+                    )
     else:
         click.echo("Password already set up")
         sys.exit(-1)
 
-    if password_response.get("ChallengeName") == "MFA_SETUP":
-        mfa_setup_workflow(
-            idp_client,
-            access_token=password_response["AuthenticationResult"]["AccessToken"],
-        )
+
+@cli.command()
+@click.option("-u", "--username", prompt=True)
+@click.option("--aws-region", envvar="AWS_REGION", show_envvar=True)
+@click.option("--cognito-client-id", envvar="COGNITO_CLIENT_ID", show_envvar=True)
+def reset_password(
+    username: str,
+    aws_region: str,
+    cognito_client_id: str,
+):
+    idp_client = boto3.client(
+        "cognito-idp", region_name=aws_region, config=Config(signature_version=UNSIGNED)
+    )
+    response = idp_client.forgot_password(Username=username, ClientId=cognito_client_id)
+
+    delivery_medium = response["CodeDeliveryDetails"]["DeliveryMedium"]
+    click.echo(
+        f"Reset password code delivered by {delivery_medium}. Please retrieve it and"
+        " enter it here."
+    )
+
+    reset_code = input("Reset Password Code: ")
+    new_password = input("Enter New Password: ")
+
+    new_password_set = False
+    while not new_password_set:
+        try:
+            idp_client.confirm_forgot_password(
+                ClientId=cognito_client_id,
+                ConfirmationCode=reset_code,
+                Password=new_password,
+                Username=username,
+            )
+        except idp_client.meta.client.exceptions.InvalidPasswordException as err:
+            click.echo(err)
+        else:
+            new_password_set = True
+    click.echo("New Password Set")
 
 
 @cli.command()
@@ -133,7 +181,6 @@ def setup_mfa(
         "cognito-idp", region_name=aws_region, config=Config(signature_version=UNSIGNED)
     )
     response = initiate_auth(idp_client, username, password, cognito_client_id)
-    click.echo(json.dumps(response))
 
     if response.get("ChallengeName") in ("SOFTWARE_TOKEN_MFA", "SMS_MFA"):
         session = response["Session"]

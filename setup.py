@@ -39,6 +39,6 @@ setuptools.setup(
             "csdap-auth = csdap_delivery_auth.cli:cli",
         ],
     },
-    scripts=["scripts/format", "scripts/lint", "scripts/typecheck"],
+    # scripts=["scripts/format", "scripts/lint", "scripts/typecheck"],
     version=version,
 )
