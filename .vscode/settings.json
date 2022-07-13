@@ -1,0 +1,26 @@
+{
+    "editor.formatOnSave": true,
+    "python.formatting.provider": "black",
+    "python.formatting.blackArgs": [
+        "--line-length",
+        "88",
+        "--experimental-string-processing"
+    ],
+    "python.analysis.typeCheckingMode": "basic",
+    "python.analysis.diagnosticMode": "workspace",
+    "python.linting.enabled": true,
+    "python.linting.lintOnSave": true,
+    "python.linting.flake8Enabled": true,
+    "python.linting.pylintEnabled": false,
+    "python.linting.ignorePatterns": [
+        ".vscode/*.py",
+        "**/site-packages/**/*.py",
+        "**/python/**/*.py",
+    ],
+    "python.linting.cwd": "",
+    "python.linting.flake8Args": [
+        "--verbose",
+        "--line-length=88"
+    ],
+    "coverage-gutters.coverageReportFileName": "cov.xml"
+}
