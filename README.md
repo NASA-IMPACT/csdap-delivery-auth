@@ -2,9 +2,19 @@
 
 ## Installation and Configuration
 
+_Note: You do **not** need to check out this repository. Simply install the package with pip, as described below._
+
 1. You will receive an email with your username and temporary password. Separately, you will receive configuration details for your environment.
 1. Install this tool: `pip3 install --user https://github.com/NASA-IMPACT/csdap-delivery-auth/archive/main.zip`
-1. Copy `.env.template` into a new file called `.env` and populate it with the configuration provided to you in Step #1.
+1. Copy the contents of `.env.template` into a new file called `.env` and populate it with the configuration provided to you in Step #1.
+
+```
+export AWS_ACCOUNT_ID=<AccountId>
+export AWS_REGION=<Region>
+export COGNITO_IDENTITY_POOL_ID=<IdPool>
+export COGNITO_USER_POOL_ID=<UserPool>
+export COGNITO_CLIENT_ID=<ClientId>
+```
 
 ## Set up your account
 
@@ -51,7 +61,7 @@ $ echo "something" > testfile
 $ AWS_PROFILE=csdap aws s3 cp testfile s3://<bucket>/testfile
 ```
 
-5. When you run your data delivery script, ensure the correct AWS profile is selected:
+5. When you run your data delivery script, ensure the correct AWS profile is selected and the environment file created in the Install step has been loaded (`source .env`):
 
 ```
 $ AWS_PROFILE=csdap your_data_delivery_script.sh
