@@ -47,7 +47,8 @@ def mfa_auth(
 def mfa_setup_workflow(idp_client, access_token: str):
     associate_response = idp_client.associate_software_token(AccessToken=access_token)
     click.echo(
-        f"Add the following secret code to your authentication app:\n{associate_response['SecretCode']}"
+        "Add the following secret code to your authentication"
+        f" app:\n{associate_response['SecretCode']}"
     )
     otp = input("Generate a code with your authentication app and enter it here: ")
 
@@ -180,14 +181,7 @@ def get_credentials(
         config=Config(signature_version=UNSIGNED),
     )
     try:
-        response = idp_client.initiate_auth(
-            AuthFlow="USER_PASSWORD_AUTH",
-            AuthParameters={
-                "USERNAME": username,
-                "PASSWORD": password,
-            },
-            ClientId=cognito_client_id,
-        )
+        response = initiate_auth(idp_client, username, password, cognito_client_id)
     except:
         sys.exit(-1)
 

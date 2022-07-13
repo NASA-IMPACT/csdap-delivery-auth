@@ -12,9 +12,16 @@ install_requires = [
     "python-dotenv==0.20.0",
 ]
 
+extra_reqs = {
+    "dev": ["black==22.3.0", "flake8==4.0.1", "pyright==1.1.251"],
+}
+
 setuptools.setup(
     name="csdap-delivery-auth",
-    description="A script to manage CSDAP Delivery accounts, including retrieving AWS Credentials.",
+    description=(
+        "A script to manage CSDAP Delivery accounts, including retrieving AWS"
+        " Credentials."
+    ),
     long_description=desc,
     long_description_content_type="text/markdown",
     python_requires=">=3.8",
@@ -23,18 +30,20 @@ setuptools.setup(
         "Intended Audience :: Science/Research",
         "Programming Language :: Python :: 3.8",
     ],
-    keywords="STAC FastAPI",
+    keywords="CSDAP Delivery Auth",
     author="Edward Keeble",
     author_email="edward@developmentseed.org",
-    url="https://github.com/NASA-IMPACT/csdap-stac-api",
+    url="https://github.com/NASA-IMPACT/csdap-delivery-auth",
     license="",
     zip_safe=False,
     include_package_data=True,
     install_requires=install_requires,
+    extras_require=extra_reqs,
     entry_points={
         "console_scripts": [
             "csdap-auth = csdap_delivery_auth.cli:cli",
         ],
     },
+    scripts=["scripts/format", "scripts/lint", "scripts/typecheck"],
     version=version,
 )
