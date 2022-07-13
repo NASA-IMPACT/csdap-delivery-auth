@@ -1,1 +1,0 @@
-black csdap_delivery_auth setup.py $1

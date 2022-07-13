@@ -6,6 +6,8 @@ import json
 from typing import Optional
 import sys
 
+from csdap_delivery_auth.exceptions import InvalidPassword
+
 
 @click.group()
 def cli():
@@ -13,14 +15,17 @@ def cli():
 
 
 def initiate_auth(idp_client, username: str, password: str, cognito_client_id: str):
-    return idp_client.initiate_auth(
-        AuthFlow="USER_PASSWORD_AUTH",
-        AuthParameters={
-            "USERNAME": username,
-            "PASSWORD": password,
-        },
-        ClientId=cognito_client_id,
-    )
+    try:
+        return idp_client.initiate_auth(
+            AuthFlow="USER_PASSWORD_AUTH",
+            AuthParameters={
+                "USERNAME": username,
+                "PASSWORD": password,
+            },
+            ClientId=cognito_client_id,
+        )
+    except idp_client.meta.client.exceptions.NotAuthorizedException:
+        raise InvalidPassword
 
 
 def mfa_auth(
@@ -82,7 +87,12 @@ def setup_account(
     idp_client = boto3.client(
         "cognito-idp", region_name=aws_region, config=Config(signature_version=UNSIGNED)
     )
-    response = initiate_auth(idp_client, username, password, cognito_client_id)
+    try:
+        response = initiate_auth(idp_client, username, password, cognito_client_id)
+    except InvalidPassword:
+        click.echo("Invalid username or password")
+        sys.exit(-1)
+
     session = response["Session"]
 
     if response.get("ChallengeName") == "NEW_PASSWORD_REQUIRED":
@@ -180,7 +190,11 @@ def setup_mfa(
     idp_client = boto3.client(
         "cognito-idp", region_name=aws_region, config=Config(signature_version=UNSIGNED)
     )
-    response = initiate_auth(idp_client, username, password, cognito_client_id)
+    try:
+        response = initiate_auth(idp_client, username, password, cognito_client_id)
+    except InvalidPassword:
+        click.echo("Invalid username or password")
+        sys.exit(-1)
 
     if response.get("ChallengeName") in ("SOFTWARE_TOKEN_MFA", "SMS_MFA"):
         session = response["Session"]
@@ -229,7 +243,8 @@ def get_credentials(
     )
     try:
         response = initiate_auth(idp_client, username, password, cognito_client_id)
-    except:
+    except InvalidPassword:
+        click.echo("Invalid username or password")
         sys.exit(-1)
 
     if response.get("ChallengeName") in ("SOFTWARE_TOKEN_MFA", "SMS_MFA"):
@@ -255,10 +270,11 @@ def get_credentials(
             AccountId=aws_account_id,
             IdentityPoolId=cognito_identity_pool_id,
             Logins={
-                f"cognito-idp.{aws_region}.amazonaws.com/{cognito_user_pool_id}": id_token
+                f"cognito-idp.{aws_region}.amazonaws.com/{cognito_user_pool_id}": id_token  # noqa:E501
             },
         )
-    except:
+    except Exception as err:  # noqa:E722
+        click.echo(err)
         sys.exit(-1)
 
     try:
@@ -271,10 +287,11 @@ def get_credentials(
         credentials_response = identity_client.get_credentials_for_identity(
             IdentityId=identity_id,
             Logins={
-                f"cognito-idp.{aws_region}.amazonaws.com/{cognito_user_pool_id}": id_token
+                f"cognito-idp.{aws_region}.amazonaws.com/{cognito_user_pool_id}": id_token  # noqa:E501
             },
         )
-    except:
+    except Exception as err:  # noqa:E722
+        click.echo(err)
         sys.exit(-1)
 
     click.echo(

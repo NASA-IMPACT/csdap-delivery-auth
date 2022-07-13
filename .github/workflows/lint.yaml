@@ -1,0 +1,30 @@
+name: Commit Checks
+on: push
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    container: python:3.8
+    timeout-minutes: 10
+    defaults:
+      run:
+        shell: bash
+    steps:
+      - name: Check out repository code
+        uses: actions/checkout@v2
+
+      - name: Install package
+        run: |
+          python3 -m venv ./venv
+          ./venv/bin/pip install -e .[dev]
+      - name: Lint
+        run: |
+          source ./venv/bin/activate
+          flake8 csdap_delivery_auth
+      - name: Format
+        run: |
+          source ./venv/bin/activate
+          black csdap_delivery_auth setup.py
+      - name: Type check
+        run: |
+          source ./venv/bin/activate
+          pyright csdap_delivery_auth
