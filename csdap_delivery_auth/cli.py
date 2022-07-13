@@ -146,10 +146,10 @@ def reset_password(
     )
 
     reset_code = input("Reset Password Code: ")
-    new_password = input("Enter New Password: ")
 
     new_password_set = False
     while not new_password_set:
+        new_password = input("Enter New Password: ")
         try:
             idp_client.confirm_forgot_password(
                 ClientId=cognito_client_id,
