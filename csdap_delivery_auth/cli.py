@@ -12,6 +12,109 @@ def cli():
     pass
 
 
+def initiate_auth(idp_client, username: str, password: str, cognito_client_id: str):
+    return idp_client.initiate_auth(
+        AuthFlow="USER_PASSWORD_AUTH",
+        AuthParameters={
+            "USERNAME": username,
+            "PASSWORD": password,
+        },
+        ClientId=cognito_client_id,
+    )
+
+
+def mfa_auth(
+    idp_client,
+    username: str,
+    challenge_name: str,
+    session: str,
+    cognito_client_id: str,
+    mfa_code: Optional[str],
+) -> dict:
+    mfa_code = mfa_code or input("Enter MFA code: ")
+    mfa_response = idp_client.respond_to_auth_challenge(
+        ChallengeName=challenge_name,
+        ChallengeResponses={
+            "USERNAME": username,
+            f"{challenge_name}_CODE": mfa_code,
+        },
+        ClientId=cognito_client_id,
+        Session=session,
+    )
+    return mfa_response["AuthenticationResult"]
+
+
+def mfa_setup_workflow(idp_client, access_token: str):
+    associate_response = idp_client.associate_software_token(AccessToken=access_token)
+    click.echo(
+        f"Add the following secret code to your authentication app:\n{associate_response['SecretCode']}"
+    )
+    otp = input("Generate a code with your authentication app and enter it here: ")
+
+    verify_response = idp_client.verify_software_token(
+        AccessToken=access_token, UserCode=otp
+    )
+
+    if verify_response["Status"] == "SUCCESS":
+        # configure account to use MFA
+        user_mfa_response = idp_client.set_user_mfa_preference(
+            AccessToken=access_token,
+            SoftwareTokenMfaSettings={"Enabled": True, "PreferredMfa": True},
+        )
+        click.echo(user_mfa_response)
+        click.echo("MFA authentication added to your account.")
+    else:
+        click.echo("Something went wrong adding MFA Authentication to your account.")
+
+
+@cli.command()
+@click.option("-u", "--username", prompt=True)
+@click.option("-p", "--password", prompt=True, hide_input=True)
+@click.option("--aws-region", envvar="AWS_REGION", show_envvar=True)
+@click.option("--cognito-client-id", envvar="COGNITO_CLIENT_ID", show_envvar=True)
+def setup_account(
+    username: str,
+    password: str,
+    aws_region: str,
+    cognito_client_id: str,
+):
+    idp_client = boto3.client(
+        "cognito-idp", region_name=aws_region, config=Config(signature_version=UNSIGNED)
+    )
+    response = initiate_auth(idp_client, username, password, cognito_client_id)
+    session = response["Session"]
+
+    if response.get("ChallengeName") == "NEW_PASSWORD_REQUIRED":
+        required_attribute_keys = json.loads(
+            response["ChallengeParameters"].get("requiredAttributes", "[]")
+        )
+        new_password = input("Enter new password: ")
+        required_attribute_values = {}
+        for attribute in required_attribute_keys:
+            required_attribute_values[attribute] = input(
+                f"Enter a value for {attribute}: "
+            )
+        password_response = idp_client.respond_to_auth_challenge(
+            ChallengeName=response["ChallengeName"],
+            ChallengeResponses={
+                "USERNAME": username,
+                "NEW_PASSWORD": new_password,
+                **required_attribute_values,
+            },
+            ClientId=cognito_client_id,
+            Session=session,
+        )
+    else:
+        click.echo("Password already set up")
+        sys.exit(-1)
+
+    if password_response.get("ChallengeName") == "MFA_SETUP":
+        mfa_setup_workflow(
+            idp_client,
+            access_token=password_response["AuthenticationResult"]["AccessToken"],
+        )
+
+
 @cli.command()
 @click.option("-u", "--username", prompt=True)
 @click.option("-p", "--password", prompt=True, hide_input=True)
@@ -28,48 +131,23 @@ def setup_mfa(
     idp_client = boto3.client(
         "cognito-idp", region_name=aws_region, config=Config(signature_version=UNSIGNED)
     )
-    response = idp_client.initiate_auth(
-        AuthFlow="USER_PASSWORD_AUTH",
-        AuthParameters={
-            "USERNAME": username,
-            "PASSWORD": password,
-        },
-        ClientId=cognito_client_id,
-    )
-    session = response["Session"]
+    response = initiate_auth(idp_client, username, password, cognito_client_id)
+    click.echo(json.dumps(response))
 
-    if "ChallengeName" in response:
-        mfa_code = mfa_code or input("Enter MFA code: ")
-        mfa_response = idp_client.respond_to_auth_challenge(
-            ChallengeName=response["ChallengeName"],
-            ChallengeResponses={
-                "USERNAME": username,
-                f"{response['ChallengeName']}_CODE": mfa_code,
-            },
-            ClientId=cognito_client_id,
-            Session=session,
+    if response.get("ChallengeName") in ("SOFTWARE_TOKEN_MFA", "SMS_MFA"):
+        session = response["Session"]
+        auth_result = mfa_auth(
+            idp_client,
+            username,
+            response["ChallengeName"],
+            session,
+            cognito_client_id,
+            mfa_code,
         )
-        auth_result = mfa_response["AuthenticationResult"]
     else:
         auth_result = response["AuthenticationResult"]
 
-    associate_response = idp_client.associate_software_token(
-        AccessToken=auth_result["AccessToken"]
-    )
-    click.echo(associate_response)
-    click.echo(
-        f"Add the following secret code to your authentication app:\n{associate_response['SecretCode']}"
-    )
-    otp = input("Generate a code with your authentication app and enter it here: ")
-
-    verify_response = idp_client.verify_software_token(
-        AccessToken=auth_result["AccessToken"], UserCode=otp
-    )
-
-    if verify_response["Status"] == "SUCCESS":
-        click.echo("Success! MFA authentication added to your account.")
-    else:
-        click.echo("Failed! Something went wrong.")
+    mfa_setup_workflow(idp_client, access_token=auth_result["AccessToken"])
 
 
 @cli.command()
@@ -113,18 +191,15 @@ def get_credentials(
     except:
         sys.exit(-1)
 
-    if "ChallengeName" in response:
-        mfa_code = mfa_code or input("Enter MFA code: ")
-        mfa_response = idp_client.respond_to_auth_challenge(
-            ChallengeName=response["ChallengeName"],
-            ChallengeResponses={
-                "USERNAME": username,
-                f"{response['ChallengeName']}_CODE": mfa_code,
-            },
-            ClientId=cognito_client_id,
-            Session=response["Session"],
+    if response.get("ChallengeName") in ("SOFTWARE_TOKEN_MFA", "SMS_MFA"):
+        auth_result = mfa_auth(
+            idp_client,
+            username,
+            response["ChallengeName"],
+            response["Session"],
+            cognito_client_id,
+            mfa_code,
         )
-        auth_result = mfa_response["AuthenticationResult"]
     else:
         auth_result = response["AuthenticationResult"]
 
