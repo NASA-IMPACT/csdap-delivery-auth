@@ -1,10 +1,10 @@
 # Cognito Access Script
 
-## Initial set up
+## Installation and Configuration
 
 1. You will receive an email with your username and temporary password. Separately, you will receive configuration details for your environment.
 1. Install the AWS CLI tool for your environment: https://aws.amazon.com/cli/
-1. Install this tool: `pip install git+https://github.com/NASA-IMPACT/csdap-delivery-auth.git`
+1. Install this tool: `pip install https://github.com/NASA-IMPACT/csdap-delivery-auth/archive/main.zip`
 1. Copy `.env.template` into a new file called `.env` and populate it with the configuration provided to you in Step #1.
 
 ## Set up your account
