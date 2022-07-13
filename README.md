@@ -1,4 +1,4 @@
-# Cognito Access Script
+# CSDAP Delivery Auth Script
 
 ## Installation and Configuration
 
