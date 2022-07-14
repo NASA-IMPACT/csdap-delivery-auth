@@ -49,8 +49,15 @@ def mfa_auth(
     return mfa_response["AuthenticationResult"]
 
 
-def mfa_setup_workflow(idp_client, access_token: str):
-    associate_response = idp_client.associate_software_token(AccessToken=access_token)
+def mfa_setup_workflow(
+    idp_client, access_token: Optional[str] = None, session: Optional[str] = None
+):
+    associate_kwargs = {}
+    if access_token:
+        associate_kwargs = {"AccessToken": access_token}
+    elif session:
+        associate_kwargs = {"Session": session}
+    associate_response = idp_client.associate_software_token(**associate_kwargs)
     click.echo(
         "Add the following secret code to your authentication"
         f" app:\n{associate_response['SecretCode']}"
@@ -58,16 +65,10 @@ def mfa_setup_workflow(idp_client, access_token: str):
     otp = input("Generate a code with your authentication app and enter it here: ")
 
     verify_response = idp_client.verify_software_token(
-        AccessToken=access_token, UserCode=otp
+        UserCode=otp, Session=associate_response["Session"]
     )
 
     if verify_response["Status"] == "SUCCESS":
-        # configure account to use MFA
-        user_mfa_response = idp_client.set_user_mfa_preference(
-            AccessToken=access_token,
-            SoftwareTokenMfaSettings={"Enabled": True, "PreferredMfa": True},
-        )
-        click.echo(user_mfa_response)
         click.echo("MFA authentication added to your account.")
     else:
         click.echo("Something went wrong adding MFA Authentication to your account.")
@@ -125,10 +126,8 @@ def setup_account(
                 click.echo("New password set")
                 if password_response.get("ChallengeName") == "MFA_SETUP":
                     mfa_setup_workflow(
-                        idp_client,
-                        access_token=password_response["AuthenticationResult"][
-                            "AccessToken"
-                        ],
+                        idp_client=idp_client,
+                        session=password_response["Session"],
                     )
     else:
         click.echo("Password already set up")
