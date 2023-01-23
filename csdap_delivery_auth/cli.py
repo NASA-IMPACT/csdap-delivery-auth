@@ -58,15 +58,17 @@ def mfa_setup_workflow(
     elif session:
         associate_kwargs = {"Session": session}
     associate_response = idp_client.associate_software_token(**associate_kwargs)
+
+    if associate_response.get("Session"):
+        associate_kwargs = {"Session": associate_response["Session"]}
+
     click.echo(
         "Add the following secret code to your authentication"
         f" app:\n{associate_response['SecretCode']}"
     )
     otp = input("Generate a code with your authentication app and enter it here: ")
 
-    verify_response = idp_client.verify_software_token(
-        UserCode=otp, Session=associate_response["Session"]
-    )
+    verify_response = idp_client.verify_software_token(UserCode=otp, **associate_kwargs)
 
     if verify_response["Status"] == "SUCCESS":
         click.echo("MFA authentication added to your account.")
@@ -306,6 +308,14 @@ def get_credentials(
             }
         )
     )
+
+
+@cli.command()
+def version():
+    import pkg_resources  # part of setuptools
+
+    version = pkg_resources.require("csdap_delivery_auth")[0].version
+    click.echo(version)
 
 
 if __name__ == "__main__":
