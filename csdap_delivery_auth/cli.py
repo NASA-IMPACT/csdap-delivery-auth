@@ -207,6 +207,9 @@ def setup_mfa(
             cognito_client_id,
             mfa_code,
         )
+    elif response.get("ChallengeName") == "MFA_SETUP":
+        mfa_setup_workflow(idp_client, session=response["Session"])
+        return
     else:
         auth_result = response["AuthenticationResult"]
 
