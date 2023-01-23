@@ -24,7 +24,7 @@ def initiate_auth(idp_client, username: str, password: str, cognito_client_id: s
             },
             ClientId=cognito_client_id,
         )
-    except idp_client.meta.client.exceptions.NotAuthorizedException:
+    except idp_client.exceptions.NotAuthorizedException:
         raise InvalidPassword
 
 
@@ -119,7 +119,7 @@ def setup_account(
                     ClientId=cognito_client_id,
                     Session=session,
                 )
-            except idp_client.meta.client.exceptions.InvalidPasswordException as err:
+            except idp_client.exceptions.InvalidPasswordException as err:
                 click.echo(err)
             else:
                 password_set = True
@@ -166,7 +166,7 @@ def reset_password(
                 Password=new_password,
                 Username=username,
             )
-        except idp_client.meta.client.exceptions.InvalidPasswordException as err:
+        except idp_client.exceptions.InvalidPasswordException as err:
             click.echo(err)
         else:
             new_password_set = True

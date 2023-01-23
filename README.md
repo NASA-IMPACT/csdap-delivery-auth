@@ -20,7 +20,7 @@ export COGNITO_CLIENT_ID=<ClientId>
 
 1. Load the environment variables you configured in the previous step: `source .env`
 1. Make note of the username and password you received by email. Run the account setup command: `csdap-auth setup-account -u <username> -p "<temporary password>"`
-1. Create a new password and provide it when prompted. Provide your name as well, when prompted.
+1. Create a new password and provide it when prompted. Provide your name as well, if prompted.
 
 ## Set up Multi Factor Authentication (MFA)
 
@@ -31,7 +31,8 @@ export COGNITO_CLIENT_ID=<ClientId>
 
 ## Test getting credentials
 
-1. Run `csdap-auth get-credentials -u <username> -p "<password>" --mfa-code=<mfa code>`
+1. Run `csdap-auth get-credentials -u <username> -p "<password>" --mfa-code=<mfa code>`.
+   **Note that with certain shells, you may need to escape specific special characters, such as !. So if your password is "Test!123Test", it should be entered as "Test\!123Test".**
 2. If everything is configured correctly, you should receive a JSON document with Access Keys and a Session Token.
 
 ## Automatically get credentials for your AWS Profile
